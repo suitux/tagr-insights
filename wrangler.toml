@@ -17,5 +17,5 @@ ALLOWED_ORIGINS = "https://tagr.xavirincon.com,http://localhost:4321,http://loca
 binding = "DB"
 database_name = "tagr-insights"
 # Filled in with the id printed by `wrangler d1 create tagr-insights`.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "72c00804-0a3d-418a-9f5c-ce7979d36263"
 migrations_dir = "migrations"
