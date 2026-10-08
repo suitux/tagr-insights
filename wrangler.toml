@@ -1,0 +1,21 @@
+name = "tagr-insights"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+# Instances report to a domain we own, so the backend can move without breaking old releases.
+routes = [{ pattern = "analytics.tagr.xavirincon.com", custom_domain = true }]
+
+# 00:05 UTC: summarize the days that just closed.
+[triggers]
+crons = ["5 0 * * *"]
+
+[vars]
+# Origins allowed to read /summary.json from a browser (the dashboard lives on the landing site).
+ALLOWED_ORIGINS = "https://tagr.xavirincon.com,http://localhost:4321,http://localhost:4322"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tagr-insights"
+# Filled in with the id printed by `wrangler d1 create tagr-insights`.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
