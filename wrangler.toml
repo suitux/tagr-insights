@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2026-10-01"
 
 # Instances report to a domain we own, so the backend can move without breaking old releases.
-routes = [{ pattern = "analytics.tagr.xavirincon.com", custom_domain = true }]
+routes = [{ pattern = "tagr-insights.xavirincon.com", custom_domain = true }]
 
 # 00:05 UTC: summarize the days that just closed.
 [triggers]

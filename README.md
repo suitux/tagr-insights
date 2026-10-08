@@ -1,7 +1,7 @@
 # Tagr Insights
 
 Collects the anonymous daily usage report sent by [Tagr](https://github.com/suitux/Tagr) instances and serves
-the aggregated history behind the public dashboard at <https://tagr.xavirincon.com/analytics/>.
+the aggregated history behind the public dashboard at <https://tagr.xavirincon.com/insights/>.
 
 Modelled on [Navidrome Insights](https://github.com/navidrome/insights), rebuilt as a single Cloudflare Worker
 with D1 instead of a Go server writing to disk. It runs entirely on Cloudflare's free tier.
@@ -48,7 +48,7 @@ Point a Tagr build at it with `TAGR_INSIGHTS_DEBUG=1 TAGR_INSIGHTS_ENDPOINT=http
 1. `pnpm wrangler login`
 2. `pnpm wrangler d1 create tagr-insights` and paste the printed `database_id` into `wrangler.toml`.
 3. `pnpm db:migrate:remote`
-4. `pnpm deploy`. The custom domain `analytics.tagr.xavirincon.com` is created on the `xavirincon.com` zone
+4. `pnpm deploy`. The custom domain `tagr-insights.xavirincon.com` is created on the `xavirincon.com` zone
    together with its certificate.
 5. For deploys from GitHub Actions, add the `CLOUDFLARE_API_TOKEN` (Workers Scripts, D1 and Workers Routes:
    edit) and `CLOUDFLARE_ACCOUNT_ID` repository secrets.
@@ -56,7 +56,7 @@ Point a Tagr build at it with `TAGR_INSIGHTS_DEBUG=1 TAGR_INSIGHTS_ENDPOINT=http
 Shields.io badge for the Tagr README:
 
 ```
-https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fanalytics.tagr.xavirincon.com%2Fsummary.json&query=%24.totalInstances&label=installations
+https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Ftagr-insights.xavirincon.com%2Fsummary.json&query=%24.totalInstances&label=installations
 ```
 
 ## License

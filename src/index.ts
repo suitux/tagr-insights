@@ -18,6 +18,10 @@ const MAX_REPORT_BYTES = 32 * 1024
 const REPORT_RETENTION_DAYS = 90
 /** Days re-summarized on every run, so a late report still lands in its day. */
 const SUMMARIZE_LOOKBACK_DAYS = 3
+/** Window of the live "today" point */
+const LIVE_WINDOW_MS = 24 * 60 * 60 * 1000
+/** Short, so the dashboard follows new reports; the live query is cheap at this scale */
+const LIVE_CACHE_SECONDS = 300
 
 const RANGES = {
   '30d': { days: 30, weekly: false },
@@ -40,7 +44,7 @@ function daysAgo(days: number, from = new Date()): string {
 
 const app = new Hono<{ Bindings: Env }>()
 
-app.get('/', c => c.text('Tagr Insights. Dashboard: https://tagr.xavirincon.com/analytics/'))
+app.get('/', c => c.text('Tagr Insights. Dashboard: https://tagr.xavirincon.com/insights/'))
 
 app.get('/healthz', c => c.text('ok'))
 
@@ -88,23 +92,53 @@ app.get('/summary.json', async c => {
       ? c.env.DB.prepare('SELECT day, data FROM daily_summaries ORDER BY day')
       : c.env.DB.prepare('SELECT day, data FROM daily_summaries WHERE day >= ?1 ORDER BY day').bind(daysAgo(days))
 
-  const { results } = await query.all<{ day: string; data: string }>()
+  const now = new Date()
+  const [{ results }, live] = await Promise.all([
+    query.all<{ day: string; data: string }>(),
+    summarizeLive(c.env.DB, now)
+  ])
 
-  const daily: HistoryPoint[] = excludeIncompleteDays(
-    results.map(row => ({ day: row.day, summary: JSON.parse(row.data) as DailySummary }))
+  // The live point stands for today and replaces the stored row, which only exists if a late
+  // re-summary wrote one. It is complete by construction, so it skips the incomplete-day check.
+  const today = utcDay(now)
+  const closed: HistoryPoint[] = excludeIncompleteDays(
+    results
+      .filter(row => row.day !== today)
+      .map(row => ({ day: row.day, summary: JSON.parse(row.data) as DailySummary }))
   )
+  const daily = live ? [...closed, { day: today, summary: live }] : closed
   const history = weekly ? groupByWeek(daily) : daily
   const latest = daily.at(-1)
 
-  c.header('Cache-Control', 'public, max-age=3600')
+  c.header('Cache-Control', `public, max-age=${LIVE_CACHE_SECONDS}`)
   return c.json({
     range,
     granularity: weekly ? 'week' : 'day',
-    updatedAt: latest?.day ?? null,
+    updatedAt: latest ? now.toISOString() : null,
     totalInstances: latest?.summary.instances ?? 0,
     history
   })
 })
+
+/**
+ * Today's point, computed on every request: the latest report of each instance received in the
+ * last 24 hours. Instances report every 24 hours, so this window holds each active instance
+ * exactly once, whereas "since midnight" would start near zero and climb all day.
+ */
+export async function summarizeLive(db: D1Database, now = new Date()): Promise<DailySummary | null> {
+  const since = new Date(now.getTime() - LIVE_WINDOW_MS).toISOString()
+  const { results } = await db
+    .prepare(
+      `SELECT data FROM reports r
+       WHERE received_at >= ?1
+         AND received_at = (SELECT MAX(received_at) FROM reports WHERE instance_id = r.instance_id)`
+    )
+    .bind(since)
+    .all<{ data: string }>()
+
+  if (results.length === 0) return null
+  return summarizeReports(results.map(row => JSON.parse(row.data) as InsightsReport))
+}
 
 export async function summarizeDay(db: D1Database, day: string): Promise<boolean> {
   const { results } = await db.prepare('SELECT data FROM reports WHERE day = ?1').bind(day).all<{ data: string }>()
